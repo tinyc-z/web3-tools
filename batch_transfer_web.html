@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量转账工具 - BNB</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.1/dist/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .wallet-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9ff;
+            border-radius: 15px;
+            border: 2px solid #e1e8ff;
+        }
+
+        .wallet-info {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f5e8;
+            border-radius: 10px;
+            border-left: 4px solid #4caf50;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e8ff;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(244, 67, 54, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .progress-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9ff;
+            border-radius: 15px;
+            border: 2px solid #e1e8ff;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e1e8ff;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .log-section {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .log-entry.error {
+            color: #ff6b6b;
+        }
+
+        .log-entry.success {
+            color: #51cf66;
+        }
+
+        .log-entry.warning {
+            color: #ffd43b;
+        }
+
+        .network-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #e1e8ff;
+        }
+
+        .info-card h4 {
+            color: #667eea;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-card p {
+            font-weight: 600;
+            color: #333;
+            word-break: break-all;
+        }
+
+        .transfer-type-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #e0e0e0;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            background: #f5f5f5;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .tab-button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab-button:hover:not(.active) {
+            background: #e0e0e0;
+        }
+
+        .transfer-params {
+            animation: fadeIn 0.3s ease;
+        }
+
+        .token-symbol {
+            color: #667eea;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        .balance-display {
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            color: #333;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            .network-info {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 批量转账工具</h1>
+            <p>基于智能合约的高效 BSC 批量转账解决方案</p>
+        </div>
+
+        <div class="content">
+            <!-- 钱包连接区域 -->
+            <div class="wallet-section">
+                <button id="connectWallet" class="btn btn-primary">🦊 连接 OKX 钱包</button>
+                
+
+                
+                <div id="walletInfo" class="wallet-info">
+                    <div class="network-info">
+                        <div class="info-card">
+                            <h4>钱包地址</h4>
+                            <p id="walletAddress">未连接</p>
+                        </div>
+                        <div class="info-card">
+                            <h4>网络</h4>
+                            <p id="networkName">未连接</p>
+                        </div>
+                        <div class="info-card">
+                            <h4>BNB 余额</h4>
+                            <p id="bnbBalance">0 BNB</p>
+                        </div>
+                        <div class="info-card" id="tokenBalanceCard" style="display: none;">
+                            <h4>代币余额</h4>
+                            <p id="tokenBalance">--</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+                <!-- 合约地址显示 -->
+                <div class="form-group" style="margin-top: 20px;">
+                    <span style="color: gray">合约地址: 0x1e9DEA0Fcde9d3C417D509187ef470B2739956bb</span>
+                </div>
+
+            <!-- 转账参数设置 -->
+            <form id="transferForm">
+                <!-- 转账类型选择 -->
+                <div class="form-group">
+                    <label>转账类型:</label>
+                    <div class="transfer-type-tabs">
+                        <button type="button" class="tab-button active" data-type="bnb">BNB 转账</button>
+                        <button type="button" class="tab-button" data-type="erc20">ERC20 代币转账</button>
+                    </div>
+                </div>
+
+                <!-- BNB 转账参数 -->
+                <div id="bnbParams" class="transfer-params">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="minAmount">最小转账金额 (BNB)</label>
+                            <input type="number" id="minAmount" step="0.0001" value="0.0001" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="maxAmount">最大转账金额 (BNB)</label>
+                            <input type="number" id="maxAmount" step="0.0001" value="0.0001" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ERC20 转账参数 -->
+                <div id="erc20Params" class="transfer-params" style="display: none;">
+                    <div class="form-group">
+                        <label for="tokenSelect">选择代币:</label>
+                        <select id="tokenSelect">
+                            <option value="">-- 选择预配置代币 --</option>
+                            <option value="USDT">USDT</option>
+                            <option value="ASTER">ASTER</option>
+                            <option value="USDF">USDF</option>
+                            <option value="custom">自定义代币地址</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="customTokenGroup" style="display: none;">
+                        <label for="customTokenAddress">自定义代币地址:</label>
+                        <input type="text" id="customTokenAddress" placeholder="0x..." pattern="^0x[a-fA-F0-9]{40}$">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tokenMinAmount">最小金额:</label>
+                            <input type="number" id="tokenMinAmount" step="0.000001" min="0" value="1" placeholder="1">
+                            <span id="tokenSymbol" class="token-symbol"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="tokenMaxAmount">最大金额:</label>
+                            <input type="number" id="tokenMaxAmount" step="0.000001" min="0" value="1" placeholder="1">
+                            <span id="tokenSymbol2" class="token-symbol"></span>
+                        </div>
+                    </div>
+                    <div class="form-group" id="tokenBalanceGroup" style="display: none;">
+                        <label>代币余额:</label>
+                        <div id="tokenBalanceDisplay" class="balance-display">--</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="batchSize">每批处理数量</label>
+                    <input type="number" id="batchSize" value="200" min="1" max="500" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="addresses">接收地址 (每行一个地址)</label>
+                    <textarea id="addresses" placeholder="0x1234567890123456789012345678901234567890&#10;0xabcdefabcdefabcdefabcdefabcdefabcdefabcd&#10;..." required></textarea>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" id="startTransfer" class="btn btn-success">🚀 开始转账</button>
+                    <button type="button" id="stopTransfer" class="btn btn-danger" disabled>⏹️ 停止转账</button>
+                </div>
+            </form>
+
+            <!-- 进度显示区域 -->
+            <div id="progressSection" class="progress-section">
+                <div class="progress-text" id="progressText">准备中...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="network-info">
+                    <div class="info-card">
+                        <h4>已处理</h4>
+                        <p id="processedCount">0</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>总数量</h4>
+                        <p id="totalCount">0</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>成功率</h4>
+                        <p id="successRate">0%</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>总花费</h4>
+                        <p id="totalSpent">0 BNB</p>
+                    </div>
+                </div>
+                <div id="logSection" class="log-section"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let provider = null;
+        let signer = null;
+        let contract = null;
+        let isTransferring = false;
+        let shouldStop = false;
+        let currentTransferType = 'bnb'; // 'bnb' 或 'erc20'
+        let currentTokenInfo = null;
+
+        // 合约配置
+        const CONTRACT_ADDRESS = "0x1e9DEA0Fcde9d3C417D509187ef470B2739956bb";
+        
+        // ERC20 代币配置 (BSC 网络)
+        const TOKENS = {
+            USDT: {
+                address: "0x55d398326f99059fF775485246999027B3197955",
+                symbol: "USDT",
+                name: "Tether USD",
+                decimals: 18
+            },
+            ASTER: {
+                address: "0x000ae314e2a2172a039b26378814c252734f556a",
+                symbol: "ASTER",
+                name: "Aster Token",
+                decimals: 18
+            },
+            USDF: {
+                address: "0x5A110fC00474038f6c02E89C707D638602EA44B5",
+                symbol: "USDF",
+                name: "USDF Token",
+                decimals: 18
+            }
+        };
+
+        // ERC20 ABI
+        const ERC20_ABI = [
+            "function balanceOf(address owner) view returns (uint256)",
+            "function decimals() view returns (uint8)",
+            "function symbol() view returns (string)",
+            "function name() view returns (string)",
+            "function approve(address spender, uint256 amount) returns (bool)",
+            "function allowance(address owner, address spender) view returns (uint256)"
+        ];
+        const CONTRACT_ABI = [
+            {
+                "inputs": [],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+            },
+            {
+                "inputs": [
+                    {"internalType": "address[]", "name": "recipients", "type": "address[]"},
+                    {"internalType": "uint256[]", "name": "amounts", "type": "uint256[]"}
+                ],
+                "name": "batchTransfer",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"internalType": "address", "name": "token", "type": "address"},
+                    {"internalType": "address[]", "name": "recipients", "type": "address[]"},
+                    {"internalType": "uint256[]", "name": "amounts", "type": "uint256[]"}
+                ],
+                "name": "batchTransferERC20",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"internalType": "address payable", "name": "to", "type": "address"},
+                    {"internalType": "uint256", "name": "amount", "type": "uint256"}
+                ],
+                "name": "emergencyWithdrawNative",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"internalType": "address", "name": "token", "type": "address"},
+                    {"internalType": "address", "name": "to", "type": "address"},
+                    {"internalType": "uint256", "name": "amount", "type": "uint256"}
+                ],
+                "name": "emergencyWithdrawToken",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "owner",
+                "outputs": [
+                    {"internalType": "address", "name": "", "type": "address"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "stateMutability": "payable",
+                "type": "receive"
+            }
+        ];
+
+        // 网络配置
+        const NETWORKS = {
+            56: {
+                name: 'BSC Mainnet',
+                symbol: 'BNB',
+                rpcUrl: 'https://bsc-dataseed1.binance.org/',
+                blockExplorerUrl: 'https://bscscan.com'
+            }
+        };
+
+        // DOM 元素
+        const connectWalletBtn = document.getElementById('connectWallet');
+        const walletInfo = document.getElementById('walletInfo');
+        const walletAddress = document.getElementById('walletAddress');
+        const networkName = document.getElementById('networkName');
+        const walletBalance = document.getElementById('walletBalance');
+        const transferForm = document.getElementById('transferForm');
+        const startTransferBtn = document.getElementById('startTransfer');
+        const stopTransferBtn = document.getElementById('stopTransfer');
+        const progressSection = document.getElementById('progressSection');
+        const progressText = document.getElementById('progressText');
+        const progressFill = document.getElementById('progressFill');
+        const logSection = document.getElementById('logSection');
+
+        // 日志函数
+        function addLog(message, type = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logSection.appendChild(logEntry);
+            logSection.scrollTop = logSection.scrollHeight;
+        }
+
+        // 连接钱包
+        async function connectWallet() {
+            try {
+                // 检测多种钱包提供者
+                let walletProvider = null;
+                let walletName = '';
+
+                // 检测 OKX 钱包的多种可能方式
+                if (typeof window.okxwallet !== 'undefined') {
+                    walletProvider = window.okxwallet;
+                    walletName = 'OKX';
+                } else if (typeof window.okex !== 'undefined' && window.okex.ethereum) {
+                    walletProvider = window.okex.ethereum;
+                    walletName = 'OKX';
+                } else if (typeof window.ethereum !== 'undefined') {
+                    // 检查是否为 OKX 钱包
+                    if (window.ethereum.isOkxWallet || window.ethereum.isOKExWallet) {
+                        walletProvider = window.ethereum;
+                        walletName = 'OKX';
+                    } else {
+                        // 尝试使用通用的 ethereum 提供者
+                        walletProvider = window.ethereum;
+                        walletName = 'Web3';
+                    }
+                }
+
+                if (!walletProvider) {
+                    alert('未检测到钱包扩展，请确保已安装 OKX 钱包或其他 Web3 钱包');
+                    return;
+                }
+
+                addLog(`检测到 ${walletName} 钱包`, 'info');
+
+                // 请求连接钱包
+                const accounts = await walletProvider.request({
+                    method: 'eth_requestAccounts'
+                });
+
+                if (accounts.length === 0) {
+                    throw new Error('未获取到钱包账户');
+                }
+
+                // 创建 provider 和 signer
+                provider = new ethers.BrowserProvider(walletProvider);
+                signer = await provider.getSigner();
+
+                // 获取网络信息
+                const network = await provider.getNetwork();
+                const chainId = Number(network.chainId);
+
+                // 检查是否为 BSC 网络
+                if (chainId !== 56) {
+                    try {
+                        await walletProvider.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0x38' }], // BSC Mainnet
+                        });
+                        // 重新获取网络信息
+                        const newNetwork = await provider.getNetwork();
+                        const newChainId = Number(newNetwork.chainId);
+                        if (newChainId !== 56) {
+                            throw new Error('请切换到 BSC 主网');
+                        }
+                    } catch (switchError) {
+                        if (switchError.code === 4902) {
+                            // 网络不存在，尝试添加 BSC 网络
+                            try {
+                                await walletProvider.request({
+                                    method: 'wallet_addEthereumChain',
+                                    params: [{
+                                        chainId: '0x38',
+                                        chainName: 'BSC Mainnet',
+                                        nativeCurrency: {
+                                            name: 'BNB',
+                                            symbol: 'BNB',
+                                            decimals: 18
+                                        },
+                                        rpcUrls: ['https://bsc-dataseed1.binance.org/'],
+                                        blockExplorerUrls: ['https://bscscan.com/']
+                                    }]
+                                });
+                            } catch (addError) {
+                                throw new Error('请手动添加并切换到 BSC 主网');
+                            }
+                        } else {
+                            throw new Error('请手动切换到 BSC 主网');
+                        }
+                    }
+                }
+
+                // 获取余额
+                const address = await signer.getAddress();
+                const balance = await provider.getBalance(address);
+
+                // 创建合约实例
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                // 更新 UI
+                document.getElementById('walletAddress').textContent = `${address.slice(0, 6)}...${address.slice(-4)}`;
+                document.getElementById('networkName').textContent = NETWORKS[chainId]?.name || `Chain ID: ${chainId}`;
+                document.getElementById('bnbBalance').textContent = `${ethers.formatEther(balance)} BNB`;
+                
+                document.getElementById('walletInfo').style.display = 'block';
+                document.getElementById('connectWallet').textContent = `✅ ${walletName} 钱包已连接`;
+                document.getElementById('connectWallet').disabled = true;
+
+                // 如果已选择代币，更新代币余额
+                if (currentTokenInfo) {
+                    await updateTokenBalance();
+                    // 启动定时更新
+                    startBalanceUpdates();
+                }
+
+                addLog(`${walletName} 钱包连接成功`, 'success');
+                addLog(`地址: ${address}`, 'info');
+                addLog(`余额: ${ethers.formatEther(balance)} BNB`, 'info');
+
+                // 设置钱包事件监听
+                if (walletProvider.on) {
+                    walletProvider.on('accountsChanged', handleAccountsChanged);
+                    walletProvider.on('chainChanged', handleChainChanged);
+                }
+
+            } catch (error) {
+                console.error('连接钱包失败:', error);
+                addLog(`连接钱包失败: ${error.message}`, 'error');
+                alert(`连接钱包失败: ${error.message}`);
+            }
+        }
+
+        // 处理账户变化
+        function handleAccountsChanged(accounts) {
+            if (accounts.length === 0) {
+                // 钱包断开连接
+                document.getElementById('walletInfo').style.display = 'none';
+                document.getElementById('connectWallet').textContent = '🦊 连接钱包';
+                document.getElementById('connectWallet').disabled = false;
+                provider = null;
+                signer = null;
+                contract = null;
+                
+                // 停止余额更新
+                stopBalanceUpdates();
+                
+                addLog('钱包已断开连接', 'warning');
+            } else {
+                // 账户切换，重新连接
+                addLog('检测到账户切换，重新连接钱包...', 'info');
+                connectWallet();
+            }
+        }
+
+        // 处理网络变化
+        function handleChainChanged(chainId) {
+            // 网络切换，重新连接
+            addLog('检测到网络切换，重新连接钱包...', 'info');
+            connectWallet();
+        }
+
+        // 解析地址列表
+        function parseAddresses(addressText) {
+            return addressText
+                .split('\n')
+                .map(addr => addr.trim())
+                .filter(addr => addr && ethers.isAddress(addr));
+        }
+
+        // 生成转账金额
+        function generateAmount(minAmount, maxAmount) {
+            if (minAmount === maxAmount) {
+                return ethers.parseEther(minAmount.toString());
+            } else {
+                const randomValue = Math.random() * (maxAmount - minAmount) + minAmount;
+                return ethers.parseEther(randomValue.toFixed(8));
+            }
+        }
+
+        // 更新余额显示
+        async function updateBalances() {
+            if (!signer) return;
+            
+            try {
+                const address = await signer.getAddress();
+                const balance = await provider.getBalance(address);
+                document.getElementById('bnbBalance').textContent = `${ethers.formatEther(balance)} BNB`;
+            } catch (error) {
+                console.error('获取BNB余额失败:', error);
+                document.getElementById('bnbBalance').textContent = '获取失败';
+            }
+        }
+
+        // 更新代币余额
+        async function updateTokenBalance() {
+            if (!signer || !currentTokenInfo) return;
+            
+            try {
+                const address = await signer.getAddress();
+                const tokenContract = new ethers.Contract(currentTokenInfo.address, ERC20_ABI, provider);
+                const balance = await tokenContract.balanceOf(address);
+                const formattedBalance = ethers.formatUnits(balance, currentTokenInfo.decimals);
+                
+                document.getElementById('tokenBalance').textContent = `${formattedBalance} ${currentTokenInfo.symbol}`;
+            } catch (error) {
+                console.error('获取代币余额失败:', error);
+                document.getElementById('tokenBalance').textContent = '获取失败';
+            }
+        }
+
+        // 更新进度
+        function updateProgress(processed, total, successCount, totalSpent, tokenSymbol = 'BNB') {
+            const percentage = total > 0 ? (processed / total) * 100 : 0;
+            const successRate = processed > 0 ? (successCount / processed) * 100 : 0;
+
+            progressFill.style.width = `${percentage}%`;
+            progressText.textContent = `处理进度: ${processed}/${total} (${percentage.toFixed(1)}%)`;
+            
+            document.getElementById('processedCount').textContent = processed;
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('successRate').textContent = `${successRate.toFixed(1)}%`;
+            
+            // 修复BigInt转换问题
+            let spentFormatted;
+            if (typeof totalSpent === 'bigint') {
+                spentFormatted = tokenSymbol === 'BNB' ? 
+                    ethers.formatEther(totalSpent) : 
+                    ethers.formatUnits(totalSpent, currentTokenInfo?.decimals || 18);
+            } else {
+                spentFormatted = totalSpent.toString();
+            }
+            
+            document.getElementById('totalSpent').textContent = `${spentFormatted} ${tokenSymbol}`;
+        }
+
+        // 随机延迟
+        function randomDelay(min = 3000, max = 5000) {
+            const delay = Math.floor(Math.random() * (max - min + 1)) + min;
+            return new Promise(resolve => setTimeout(resolve, delay));
+        }
+
+        // 开始批量转账
+        async function startBatchTransfer() {
+            if (!signer || !contract) {
+                alert('请先连接钱包');
+                return;
+            }
+
+            try {
+                // 根据转账类型执行不同逻辑
+                if (currentTransferType === 'bnb') {
+                    await startBNBTransfer();
+                } else {
+                    await startERC20Transfer();
+                }
+
+            } catch (error) {
+                console.error('批量转账失败:', error);
+                addLog(`批量转账失败: ${error.message}`, 'error');
+                alert(`批量转账失败: ${error.message}`);
+            } finally {
+                // 重置状态
+                isTransferring = false;
+                shouldStop = false;
+                document.getElementById('startTransfer').disabled = false;
+                document.getElementById('stopTransfer').disabled = true;
+            }
+        }
+
+        // BNB 转账逻辑
+        async function startBNBTransfer() {
+            // 获取表单数据
+            const minAmount = parseFloat(document.getElementById('minAmount').value);
+            const maxAmount = parseFloat(document.getElementById('maxAmount').value);
+            const batchSize = parseInt(document.getElementById('batchSize').value);
+            const addressText = document.getElementById('addresses').value;
+
+            // 验证输入
+            if (minAmount <= 0 || maxAmount <= 0 || minAmount > maxAmount) {
+                throw new Error('转账金额设置无效');
+            }
+
+            if (batchSize <= 0 || batchSize > 500) {
+                throw new Error('批次大小必须在 1-500 之间');
+            }
+
+            // 解析地址
+            const addresses = parseAddresses(addressText);
+            if (addresses.length === 0) {
+                throw new Error('请输入有效的接收地址');
+            }
+
+            // 设置状态
+            isTransferring = true;
+            shouldStop = false;
+            document.getElementById('startTransfer').disabled = true;
+            document.getElementById('stopTransfer').disabled = false;
+            document.getElementById('progressSection').style.display = 'block';
+
+            addLog(`开始批量转账，共 ${addresses.length} 个地址`, 'info');
+            addLog(`转账金额范围: ${minAmount} - ${maxAmount} BNB`, 'info');
+            addLog(`批次大小: ${batchSize}`, 'info');
+
+            let totalProcessed = 0;
+            let totalSuccess = 0;
+            let totalSpent = 0n;
+
+            // 分批处理
+            for (let i = 0; i < addresses.length && !shouldStop; i += batchSize) {
+                const batch = addresses.slice(i, i + batchSize);
+                const batchNumber = Math.floor(i / batchSize) + 1;
+                const totalBatches = Math.ceil(addresses.length / batchSize);
+
+                addLog(`处理第 ${batchNumber}/${totalBatches} 批，共 ${batch.length} 个地址`, 'info');
+
+                // 生成金额数组
+                const amounts = batch.map(() => generateAmount(minAmount, maxAmount));
+                const totalNeeded = amounts.reduce((sum, amount) => sum + amount, 0n);
+
+                addLog(`第 ${batchNumber} 批总金额: ${ethers.formatEther(totalNeeded)} BNB`, 'info');
+
+                try {
+                    // 获取 gas 信息
+                    const feeData = await provider.getFeeData();
+                    const gasPrice = feeData.gasPrice;
+
+                    // 估算 gas
+                    const estimatedGas = await contract.batchTransfer.estimateGas(batch, amounts, {
+                        value: totalNeeded
+                    });
+                    const gasLimit = estimatedGas * 120n / 100n; // 增加20%缓冲
+
+                    addLog(`预估 Gas: ${estimatedGas.toString()}, Gas Price: ${ethers.formatUnits(gasPrice, 'gwei')} Gwei`, 'info');
+
+                    // 发送交易
+                    const tx = await contract.batchTransfer(batch, amounts, {
+                        value: totalNeeded,
+                        gasLimit: gasLimit,
+                        gasPrice: gasPrice
+                    });
+
+                    addLog(`⏳ 第 ${batchNumber} 批交易已发送: ${tx.hash}`, 'info');
+
+                    // 等待交易确认
+                    const receipt = await tx.wait();
+
+                    if (receipt.status === 1) {
+                        addLog(`✅ 第 ${batchNumber} 批交易成功: https://bscscan.com/tx/${tx.hash}`, 'success');
+                        totalSuccess += batch.length;
+                        totalSpent += totalNeeded;
+                    } else {
+                        addLog(`❌ 第 ${batchNumber} 批交易失败`, 'error');
+                    }
+
+                } catch (error) {
+                    addLog(`❌ 第 ${batchNumber} 批交易失败: ${error.message}`, 'error');
+                }
+
+                totalProcessed += batch.length;
+                // 更新进度显示
+                updateProgress(totalProcessed, addresses.length, totalSuccess, totalSpent, currentTransferType === 'bnb' ? 'BNB' : currentTokenInfo.symbol);
+
+                // 随机延迟
+                if (i + batchSize < addresses.length && !shouldStop) {
+                    addLog('等待随机延迟...', 'info');
+                    await randomDelay();
+                }
+            }
+
+            if (shouldStop) {
+                addLog('转账已被用户停止', 'warning');
+            } else {
+                addLog(`✅ 批量转账完成！总共处理 ${totalProcessed} 个地址，成功 ${totalSuccess} 个，共花费 ${ethers.formatEther(totalSpent)} BNB`, 'success');
+                // 转账完成后更新余额
+                await onTransferComplete();
+            }
+        }
+
+        // ERC20 转账逻辑
+        async function startERC20Transfer() {
+            // 验证代币信息
+            if (!currentTokenInfo) {
+                throw new Error('请先选择代币');
+            }
+
+            const minAmount = parseFloat(document.getElementById('tokenMinAmount').value);
+            const maxAmount = parseFloat(document.getElementById('tokenMaxAmount').value);
+            const batchSize = parseInt(document.getElementById('batchSize').value);
+            const addressText = document.getElementById('addresses').value;
+
+            // 验证输入
+            if (minAmount <= 0 || maxAmount <= 0 || minAmount > maxAmount) {
+                throw new Error('转账金额设置无效');
+            }
+
+            if (batchSize <= 0 || batchSize > 500) {
+                throw new Error('批次大小必须在 1-500 之间');
+            }
+
+            // 解析地址
+            const addresses = parseAddresses(addressText);
+            if (addresses.length === 0) {
+                throw new Error('请输入有效的接收地址');
+            }
+
+            // 设置状态
+            isTransferring = true;
+            shouldStop = false;
+            document.getElementById('startTransfer').disabled = true;
+            document.getElementById('stopTransfer').disabled = false;
+            document.getElementById('progressSection').style.display = 'block';
+
+            addLog(`开始批量转账 ${currentTokenInfo.symbol}，共 ${addresses.length} 个地址`, 'info');
+            addLog(`转账金额范围: ${minAmount} - ${maxAmount} ${currentTokenInfo.symbol}`, 'info');
+            addLog(`批次大小: ${batchSize}`, 'info');
+
+            // 检查授权
+            const userAddress = await signer.getAddress();
+            const allowance = await currentTokenInfo.contract.allowance(userAddress, CONTRACT_ADDRESS);
+            const totalNeeded = ethers.parseUnits((maxAmount * addresses.length).toString(), currentTokenInfo.decimals);
+
+            addLog(`检查代币授权: 当前授权 ${ethers.formatUnits(allowance, currentTokenInfo.decimals)} ${currentTokenInfo.symbol}`, 'info');
+            addLog(`需要授权: ${ethers.formatUnits(totalNeeded, currentTokenInfo.decimals)} ${currentTokenInfo.symbol}`, 'info');
+
+            if (allowance < totalNeeded) {
+                addLog('授权额度不足，需要授权代币使用权限...', 'warning');
+                try {
+                    const tokenContract = new ethers.Contract(currentTokenInfo.address, ERC20_ABI, signer);
+                    
+                    // 先检查当前余额
+                    const balance = await tokenContract.balanceOf(userAddress);
+                    addLog(`当前代币余额: ${ethers.formatUnits(balance, currentTokenInfo.decimals)} ${currentTokenInfo.symbol}`, 'info');
+                    
+                    if (balance < totalNeeded) {
+                        throw new Error(`代币余额不足！需要 ${ethers.formatUnits(totalNeeded, currentTokenInfo.decimals)} ${currentTokenInfo.symbol}，当前只有 ${ethers.formatUnits(balance, currentTokenInfo.decimals)} ${currentTokenInfo.symbol}`);
+                    }
+                    
+                    addLog('发送授权交易...', 'info');
+                    const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, ethers.MaxUint256);
+                    addLog(`授权交易已发送: ${approveTx.hash}`, 'info');
+                    addLog('等待授权交易确认...', 'info');
+                    await approveTx.wait();
+                    addLog('✅ 授权成功', 'success');
+                } catch (error) {
+                    throw new Error(`授权失败: ${error.message}`);
+                }
+            } else {
+                addLog('✅ 授权额度充足，无需重新授权', 'success');
+            }
+
+            let totalProcessed = 0;
+            let totalSuccess = 0;
+            let totalSpent = 0n;
+
+            // 分批处理
+            for (let i = 0; i < addresses.length && !shouldStop; i += batchSize) {
+                const batch = addresses.slice(i, i + batchSize);
+                const batchNumber = Math.floor(i / batchSize) + 1;
+                const totalBatches = Math.ceil(addresses.length / batchSize);
+
+                addLog(`处理第 ${batchNumber}/${totalBatches} 批，共 ${batch.length} 个地址`, 'info');
+
+                // 生成金额数组
+                const amounts = batch.map(() => {
+                    const randomValue = Math.random() * (maxAmount - minAmount) + minAmount;
+                    return ethers.parseUnits(randomValue.toFixed(Math.min(currentTokenInfo.decimals, 18)), currentTokenInfo.decimals);
+                });
+                const batchTotal = amounts.reduce((sum, amount) => sum + amount, 0n);
+
+                addLog(`第 ${batchNumber} 批总金额: ${ethers.formatUnits(batchTotal, currentTokenInfo.decimals)} ${currentTokenInfo.symbol}`, 'info');
+
+                try {
+                    // 调用合约的batchTransferERC20函数
+                    addLog(`发送第 ${batchNumber} 批ERC20转账交易...`, 'info');
+                    
+                    const tx = await contract.batchTransferERC20(
+                        currentTokenInfo.address,
+                        batch,
+                        amounts,
+                        {
+                            gasLimit: 500000 + (batch.length * 50000) // 动态计算gas限制
+                        }
+                    );
+                    
+                    addLog(`交易已发送: ${tx.hash}`, 'info');
+                    addLog('等待交易确认...', 'info');
+                    
+                    const receipt = await tx.wait();
+                    
+                    if (receipt.status === 1) {
+                        addLog(`✅ 第 ${batchNumber} 批交易成功，Gas使用: ${receipt.gasUsed.toString()}`, 'success');
+                        totalSuccess += batch.length;
+                        totalSpent += batchTotal;
+                    } else {
+                        addLog(`❌ 第 ${batchNumber} 批交易失败`, 'error');
+                    }
+
+                } catch (error) {
+                    addLog(`❌ 第 ${batchNumber} 批交易失败: ${error.message}`, 'error');
+                    
+                    // 如果是gas估算失败，尝试降低批次大小
+                    if (error.message.includes('gas') || error.message.includes('Gas')) {
+                        addLog('建议减少批次大小重试', 'warning');
+                    }
+                }
+
+                totalProcessed += batch.length;
+                 updateProgress(totalProcessed, addresses.length, totalSuccess, totalSpent, currentTransferType === 'bnb' ? 'BNB' : currentTokenInfo.symbol);
+
+                // 随机延迟
+                if (i + batchSize < addresses.length && !shouldStop) {
+                    addLog('等待随机延迟...', 'info');
+                    await randomDelay();
+                }
+            }
+
+            if (shouldStop) {
+                addLog('转账已被用户停止', 'warning');
+            } else {
+                addLog(`ERC20批量转账完成！总共处理 ${totalProcessed} 个地址，成功 ${totalSuccess} 个`, 'success');
+                // 转账完成后更新余额
+                await onTransferComplete();
+            }
+        }
+
+        // 停止转账
+        function stopTransfer() {
+            if (isTransferring) {
+                shouldStop = true;
+                addLog('正在停止转账...', 'warning');
+                document.getElementById('stopTransfer').disabled = true;
+            }
+        }
+
+        // 事件监听器
+        document.getElementById('connectWallet').addEventListener('click', connectWallet);
+        document.getElementById('transferForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            startBatchTransfer();
+        });
+        document.getElementById('stopTransfer').addEventListener('click', stopTransfer);
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', async () => {
+            // 初始化转账类型切换
+            initTransferTypeTabs();
+            
+            // 初始化代币选择
+            initTokenSelection();
+            
+            // 检查钱包连接状态
+            checkWalletConnection();
+        });
+
+        // 检查钱包连接状态
+        async function checkWalletConnection() {
+            // 检测多种钱包提供者
+            let walletProvider = null;
+            
+            if (typeof window.okxwallet !== 'undefined') {
+                walletProvider = window.okxwallet;
+            } else if (typeof window.okex !== 'undefined' && window.okex.ethereum) {
+                walletProvider = window.okex.ethereum;
+            } else if (typeof window.ethereum !== 'undefined') {
+                walletProvider = window.ethereum;
+            }
+
+            if (walletProvider) {
+                try {
+                    const accounts = await walletProvider.request({
+                        method: 'eth_accounts'
+                    });
+                    if (accounts.length > 0) {
+                        await connectWallet();
+                    }
+                } catch (error) {
+                    console.log('自动连接钱包失败:', error);
+                }
+            }
+        }
+
+        // 初始化转账类型切换
+        function initTransferTypeTabs() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const bnbParams = document.getElementById('bnbParams');
+            const erc20Params = document.getElementById('erc20Params');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    
+                    // 更新按钮状态
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // 切换参数面板
+                    if (type === 'bnb') {
+                        bnbParams.style.display = 'block';
+                        erc20Params.style.display = 'none';
+                        currentTransferType = 'bnb';
+                    } else {
+                        bnbParams.style.display = 'none';
+                        erc20Params.style.display = 'block';
+                        currentTransferType = 'erc20';
+                    }
+                    
+                    // 显示/隐藏代币余额卡片
+                    const tokenBalanceCard = document.getElementById('tokenBalanceCard');
+                    if (currentTransferType === 'erc20' && currentTokenInfo) {
+                        tokenBalanceCard.style.display = 'block';
+                    } else {
+                        tokenBalanceCard.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // 初始化代币选择
+        function initTokenSelection() {
+            const tokenSelect = document.getElementById('tokenSelect');
+            const customTokenGroup = document.getElementById('customTokenGroup');
+            const customTokenAddress = document.getElementById('customTokenAddress');
+
+            tokenSelect.addEventListener('change', async function() {
+                const selectedToken = this.value;
+                
+                if (selectedToken === 'custom') {
+                    customTokenGroup.style.display = 'block';
+                    currentTokenInfo = null;
+                    updateTokenSymbols('');
+                } else if (selectedToken === '') {
+                    customTokenGroup.style.display = 'none';
+                    currentTokenInfo = null;
+                    updateTokenSymbols('');
+                    hideTokenBalance();
+                } else {
+                    customTokenGroup.style.display = 'none';
+                    await loadTokenInfo(TOKENS[selectedToken].address);
+                }
+            });
+
+            customTokenAddress.addEventListener('blur', async function() {
+                const address = this.value.trim();
+                if (address && ethers.isAddress(address)) {
+                    await loadTokenInfo(address);
+                }
+            });
+        }
+
+        // 加载代币信息
+        async function loadTokenInfo(tokenAddress) {
+            if (!provider) {
+                addLog('请先连接钱包', 'warning');
+                return;
+            }
+
+            try {
+                const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+                
+                const [symbol, decimals, name] = await Promise.all([
+                    tokenContract.symbol(),
+                    tokenContract.decimals(),
+                    tokenContract.name()
+                ]);
+
+                currentTokenInfo = {
+                    address: tokenAddress,
+                    symbol,
+                    decimals: Number(decimals), // 确保decimals是数字类型
+                    name,
+                    contract: tokenContract
+                };
+
+                updateTokenSymbols(symbol);
+                
+                // 显示代币余额组
+                    document.getElementById('tokenBalanceGroup').style.display = 'block';
+                    
+                    // 显示代币余额卡片
+                    document.getElementById('tokenBalanceCard').style.display = 'block';
+                    
+                    // 更新代币余额显示
+                    if (signer) {
+                        await updateTokenBalance();
+                        // 启动定时更新
+                        startBalanceUpdates();
+                    }
+                
+                // 显示代币余额组
+                    document.getElementById('tokenBalanceGroup').style.display = 'block';
+                    
+                    // 显示代币余额卡片
+                    document.getElementById('tokenBalanceCard').style.display = 'block';
+                    
+                    // 更新代币余额显示
+                    if (signer) {
+                        await updateTokenBalance();
+                        // 启动定时更新
+                        startBalanceUpdates();
+                    }
+                    
+                    addLog(`代币信息加载成功: ${name} (${symbol})`, 'success');
+            } catch (error) {
+                addLog(`加载代币信息失败: ${error.message}`, 'error');
+                currentTokenInfo = null;
+                updateTokenSymbols('');
+                hideTokenBalance();
+            }
+        }
+
+        // 更新代币符号显示
+        function updateTokenSymbols(symbol) {
+            document.getElementById('tokenSymbol').textContent = symbol;
+            document.getElementById('tokenSymbol2').textContent = symbol;
+        }
+
+        // 更新代币余额
+        async function updateTokenBalance() {
+            if (!currentTokenInfo || !signer) {
+                hideTokenBalance();
+                return;
+            }
+
+            try {
+                const address = await signer.getAddress();
+                const balance = await currentTokenInfo.contract.balanceOf(address);
+                const formattedBalance = ethers.formatUnits(balance, currentTokenInfo.decimals);
+                
+                document.getElementById('tokenBalance').textContent = `${formattedBalance} ${currentTokenInfo.symbol}`;
+                document.getElementById('tokenBalanceDisplay').textContent = `${formattedBalance} ${currentTokenInfo.symbol}`;
+                document.getElementById('tokenBalanceGroup').style.display = 'block';
+                
+                // 添加刷新时间显示
+                const now = new Date().toLocaleTimeString();
+                console.log(`代币余额已更新 (${now}): ${formattedBalance} ${currentTokenInfo.symbol}`);
+            } catch (error) {
+                addLog(`获取代币余额失败: ${error.message}`, 'error');
+                hideTokenBalance();
+            }
+        }
+
+        // 定时更新代币余额
+        let balanceUpdateInterval = null;
+        
+        function startBalanceUpdates() {
+            // 清除现有的定时器
+            if (balanceUpdateInterval) {
+                clearInterval(balanceUpdateInterval);
+            }
+            
+            // 每30秒更新一次余额
+            balanceUpdateInterval = setInterval(async () => {
+                if (currentTokenInfo && signer) {
+                    await updateTokenBalance();
+                }
+            }, 30000);
+        }
+        
+        function stopBalanceUpdates() {
+            if (balanceUpdateInterval) {
+                clearInterval(balanceUpdateInterval);
+                balanceUpdateInterval = null;
+            }
+        }
+
+        // 在批量转账完成后更新余额
+        async function onTransferComplete() {
+            // 更新代币余额
+            if (currentTokenInfo && signer) {
+                await updateTokenBalance();
+                addLog('代币余额已更新', 'info');
+            }
+        }
+
+        // 隐藏代币余额
+        function hideTokenBalance() {
+            document.getElementById('tokenBalanceGroup').style.display = 'none';
+        }
+
+        // 监听账户变化 - 移除旧的事件监听器，因为已在 connectWallet 中处理
+    </script>
+</body>
+</html>
