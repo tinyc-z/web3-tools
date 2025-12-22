@@ -383,8 +383,9 @@
                         <select id="tokenSelect">
                             <option value="">-- 选择预配置代币 --</option>
                             <option value="USDT">USDT</option>
-                            <option value="ASTER">ASTER</option>
                             <option value="USDF">USDF</option>
+                            <option value="USD1">USD1</option>
+                            <option value="ASTER">ASTER</option>
                             <option value="custom">自定义代币地址</option>
                         </select>
                     </div>
@@ -487,7 +488,13 @@
                 symbol: "USDF",
                 name: "USDF Token",
                 decimals: 18
-            }
+            },
+            USD1: {
+                address: "0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d",
+                symbol: "USD1",
+                name: "USD1 Token",
+                decimals: 18
+            },
         };
 
         // ERC20 ABI
